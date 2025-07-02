@@ -34,7 +34,7 @@ LessonTrack is a Python-based automation system designed to streamline tutor rep
    ```
 
 3. **Follow the setup guide:**
-   See [SETUP.md](SETUP.md) for detailed configuration instructions.
+   See [LessonTrack_SETUP_GUIDE.md](LessonTrack_SETUP_GUIDE.md) for detailed configuration instructions.
 
 ## Project Structure
 
@@ -61,9 +61,9 @@ LessonTrack/
 All sensitive information is now managed through environment variables. You'll need to:
 
 1. **Set up environment variables** (see `env.example`)
-2. **Configure Google Cloud credentials** (see [SETUP.md](SETUP.md))
-3. **Create and configure Google Sheets** (see [SETUP.md](SETUP.md))
-4. **Set up OpenAI API access** (see [SETUP.md](SETUP.md))
+2. **Configure Google Cloud credentials** (see [LessonTrack_SETUP_GUIDE.md](LessonTrack_SETUP_GUIDE.md))
+3. **Create and configure Google Sheets** (see [LessonTrack_SETUP_GUIDE.md](LessonTrack_SETUP_GUIDE.md))
+4. **Set up OpenAI API access** (see [SETUP.md](LessonTrack_SETUP_GUIDE.md))
 
 ## Running the System
 
