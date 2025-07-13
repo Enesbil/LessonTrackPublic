@@ -46,16 +46,6 @@ LessonTrack is a Python-based automation system designed to streamline tutor rep
 
 ```
 LessonTrack/                  
-├── __pycache__/
-├──static
-    ├──css                          # Styles sheet for frontend
-    ├──images                       # Logo
-    ├──js                           # Animations for dashboard
-├──templates                   # Contains html files for the frontend
-    ├──dashboard.html
-    ├──demo_email.html
-    ├──error.html
-    ├──tutor_profile.html
 ├── ai_summary.py              # Loads data from google sheets and generates AI summaries using ChatGPT
 ├── Email.py                   # Handles all email sending functionalities 
 ├── Monday.py                  # Script to run on Mondays: sends form submission reminders to tutors
@@ -66,8 +56,7 @@ LessonTrack/
 ├── .env                       # Environment variables (create from env.example)
 ├── env.example                # Example environment configuration
 ├── SETUP.md                   # Detailed setup instructions
-├── README.md                  # This file
-└── .gitignore                 # Git ignore rules (excludes credential files)
+├── README.md                  
 ```
 
 ## Configuration
