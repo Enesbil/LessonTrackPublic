@@ -11,7 +11,7 @@ LessonTrack is a Python-based automation system designed to streamline tutor rep
 *   **Double-Counting Prevention:** Uses a "Last Processed Timestamp" to ensure that form responses are not processed multiple times if scripts are re-run.
 *   **AI-Powered Summaries:**
     *   Generates concise summaries of each tutor's weekly report using OpenAI's `gpt-4o` model.
-    *   Includes a **critical safety and conduct review** to flag any potentially inappropriate content, sexually suggestive language, grooming behaviors, or threats, quoting problematic statements under an "IMMEDIATE ATTENTION REQUIRED:" heading.
+    *   This includes a **critical safety and conduct review** to flag any potentially inappropriate content, sexually suggestive language, grooming behaviors, or threats, quoting problematic statements under an "IMMEDIATE ATTENTION REQUIRED:" heading.
 *   **Automated Weekly Reports:**
     *   **For School Representatives:** Sends tailored email summaries of their respective school's tutors.
     *   **For Management:** Sends a comprehensive weekly email report including:
