@@ -1,8 +1,8 @@
 # LessonTrack
 
-LessonTrack prepares weekly tutor reports and reminders from Google Sheets. It validates submissions, tracks revisions and delivery outcomes in an append-only Sheets journal, and can summarize reports with OpenAI. The public repository contains the current application code and synthetic tests.
+LessonTrack prepares weekly tutor reports and reminders from Google Sheets. It validates submissions, tracks revisions and delivery outcomes in an append-only Sheets journal, and summarizes reports with OpenAI when a report is applied. Run it from the Python CLI or the manual GitHub Actions workflows.
 
-## Set up
+## Install and configure
 
 Use Python 3.12 on macOS or Linux:
 
@@ -12,9 +12,21 @@ source .venv/bin/activate
 python -m pip install --require-hashes -r requirements.txt -r requirements-dev.txt
 ```
 
-Set the values listed in [`env.example`](env.example) in your shell. A `.env` file is only a template until you load it; for example, use `set -a; source .env; set +a` in a trusted local shell. Keep the file out of Git. For Sheets authentication, set `SHEETS_CREDENTIALS_JSON` to the service account JSON content or set `SHEETS_CREDENTIALS_FILE` to a local JSON path. The default local path is `sheets_credentials.json` in the repository root. SMTP uses `GMAIL_APP_PASSWORD`; a local `gmail_token.json` can provide Gmail OAuth fallback. GitHub Actions reads the same values from repository secrets. See [operations](docs/OPERATIONS.md) for the required secret names.
+Copy [`env.example`](env.example) to `.env`, replace its placeholders, and load it before running commands:
 
-## Preview and apply
+```bash
+cp env.example .env
+# Edit .env with your own values, then:
+set -a
+source .env
+set +a
+```
+
+The file is ignored by Git and is not loaded automatically by the application. Separate multiple `MANAGEMENT_EMAILS` with commas. The Sheets service account needs access to the spreadsheets. Locally, point `SHEETS_CREDENTIALS_FILE` to its JSON file; the default is `sheets_credentials.json` in the repository root. SMTP uses `GMAIL_APP_PASSWORD`. A local Gmail OAuth token can provide fallback through `GMAIL_TOKEN_FILE` or `gmail_token.json`.
+
+For GitHub Actions, configure `TUTOR_INFO_CSV_URL`, `RESPONSE_CSV_URL`, `REPRESENTATIVE_CSV_URL`, `FORM_URL`, `DRIVE_FOLDER_URL`, `SENDER_EMAIL`, `MANAGEMENT_EMAILS`, `OPENAI_API_KEY`, `GMAIL_APP_PASSWORD`, and `SHEETS_CREDENTIALS_JSON` as repository secrets. The last value is the service account JSON content. See [operations](docs/OPERATIONS.md) for the first apply procedure.
+
+## Preview reports and reminders
 
 ```bash
 python Sunday.py
@@ -23,13 +35,23 @@ python -m lessontrack.cli remind --campaign friday
 python Sunday.py --week 2026-10-12 --include-archives
 ```
 
-A preview reads Sheets and writes local diagnostics. It does not send mail, write Sheets, or call OpenAI. Sunday defaults to the most recently completed week; reminders default to the current week. A week runs Monday through Sunday. The class date determines the report week, and the latest submission for a tutor and week takes precedence. Invalid answers and ambiguous submissions cause a nonzero exit and record source row references.
+A normal preview reads Sheets and writes local diagnostics. It does not send mail, write Sheets, or call OpenAI. `Sunday.py` selects the week ending on the most recent Sunday; reminders select the current Monday–Sunday week. Pass `--week YYYY-MM-DD` with any date in the desired week. `--include-archives` includes archived response tabs for review.
 
-For an offline review, pass `--roster-csv path/to/roster.csv --responses-csv path/to/responses.csv`. CSV previews cannot apply. Store exports outside Git. Use `--output path/to/private-preview.txt` for a private text preview outside the diagnostics directory.
+The class date determines a report's week. A no-teaching January 1 placeholder from 2025 or 2026 with zero hours uses the submission week instead. The latest submission for a tutor and week takes precedence. Invalid answers and ambiguous submissions cause a nonzero exit and record source row references.
 
-To write journal and roster updates and send mail, add `--apply` to `Sunday.py` or `Monday.py`. Review the preview and the opening balance procedure in [operations](docs/OPERATIONS.md) before the first report apply. Apply operations preserve original response rows and only update the roster columns owned by LessonTrack. Delivery states are recorded so a rerun does not blindly resend accepted or uncertain mail.
+For an offline report review, pass `--roster-csv path/to/roster.csv --responses-csv path/to/responses.csv`. This needs no Sheets access and cannot apply changes. Store exports outside Git. Use `--output .lessontrack/private-preview.txt` for a private text preview outside the diagnostics directory; `.lessontrack/` is ignored by Git.
 
-The GitHub Actions jobs run only when manually dispatched. Dispatches default to preview; `apply` must be selected explicitly. CI runs the synthetic test suite and lint on pushes and pull requests.
+## Apply results
+
+```bash
+python Sunday.py --apply --week 2026-10-12
+python Monday.py --apply
+python -m lessontrack.cli remind --campaign friday --apply
+```
+
+`Sunday.py --apply` records reports and opening balances in the journal, updates only LessonTrack-owned roster columns, generates summaries, and sends representative and management emails. A report apply requires a reviewed opening balance already in the journal or supplied with `--baseline-json`; follow [operations](docs/OPERATIONS.md) before running it. `Monday.py --apply` and the Friday command send tutor reminders. Delivery states are recorded so reruns do not blindly resend accepted or uncertain mail. Original response rows remain in Sheets.
+
+The Monday, Sunday, and Friday GitHub Actions jobs run only when manually dispatched. Dispatches default to preview; select `apply` explicitly to write or send. CI runs the synthetic test suite and lint on pushes and pull requests.
 
 ## Tests and diagnostics
 
@@ -38,7 +60,9 @@ python -m unittest discover -s tests -v
 ruff check .
 ```
 
-Tests use synthetic records and mock external services. Each command stores `events.jsonl` and `summary.json` under `.lessontrack/runs/<run-id>/`. Diagnostic records contain stage timings, source row references, error codes, and provider status/request IDs, while excluding contact details and report narratives. `test_email.py --send --recipient address@example.com` is an explicit delivery check. `student_pairing_email.py` accepts a private JSON file of pairings and requires `--send` to deliver.
+Tests use synthetic records and mock external services. Each command stores `events.jsonl` and `summary.json` under `.lessontrack/runs/<run-id>/`. Diagnostic records contain stage timings, source row references, error codes, and provider status/request IDs, while excluding contact details and report narratives.
+
+For an explicit email delivery check, run `python test_email.py --send --recipient address@example.com`. To preview a private pairing list, run `python student_pairing_email.py --pairings-json path/to/pairings.json`; add `--send` only when ready to deliver it. The pairing file must be a JSON list with `tutor_name`, `tutor_email`, `student_name`, `student_email`, and `student_phone` strings for each entry. Keep it outside Git.
 
 ## Code layout
 
