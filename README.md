@@ -1,145 +1,56 @@
-# LessonTrack: Automated Tutor Reporting and Management System
-## created by Enes, Kushagra, Krish and Sivan
+# LessonTrack
 
-LessonTrack is a Python-based automation system designed to streamline tutor reporting, monitor tutor activity, and provide insightful summaries for management and school representatives. It leverages Google Sheets for data storage, Gmail API for email communication, and OpenAI's GPT models for intelligent summarization and safety-checking of tutor reports. The demo offers a flask frontend in order to display information in a dashboard.
+LessonTrack prepares weekly tutor reports and reminders from Google Sheets. It validates submissions, tracks revisions and delivery outcomes in an append-only Sheets journal, and can summarize reports with OpenAI. The public repository contains the current application code and synthetic tests.
 
-## Key Features
+## Set up
 
-*   **Automated Weekly Reminders:** Sends email reminders to tutors every Monday to submit their weekly lesson reports via a Google Form.
-*   **Form Response Processing:** Reads and processes tutor submissions from a Google Form linked to a Google Sheet.
-*   **Cumulative Data Tracking:** Tracks total lessons, submissions, and hours for each tutor over time.
-*   **Double-Counting Prevention:** Uses a "Last Processed Timestamp" to ensure that form responses are not processed multiple times if scripts are re-run.
-*   **AI-Powered Summaries:**
-    *   Generates concise summaries of each tutor's weekly report using OpenAI's `gpt-4o` model.
-    *   This includes a **critical safety and conduct review** to flag any potentially inappropriate content, sexually suggestive language, grooming behaviors, or threats, quoting problematic statements under an "IMMEDIATE ATTENTION REQUIRED:" heading.
-*   **Automated Weekly Reports:**
-    *   **For School Representatives:** Sends tailored email summaries of their respective school's tutors.
-    *   **For Management:** Sends a comprehensive weekly email report including:
-        *   Overall statistics (Total Tutors, Active Tutors This Week, Total Hours This Week, Total Hours All Time).
-        *   Detailed summaries for all tutors, grouped by school.
-*   **Google Sheets Integration:**
-    *   Reads tutor information, representative details, and form responses from designated Google Sheets.
-    *   Updates a master "Tutor Info" Google Sheet with the latest cumulative data for each tutor after every weekly processing cycle.
+Use Python 3.12 on macOS or Linux:
 
-## Quick Start
-
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd LessonTrackDeploymentCopy-main
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Follow the setup guide:**
-   See [SETUP.md](SETUP.md) for detailed configuration instructions.
-
-4. **Run the frontend:**
-    ```bash
-    python app.py
-    ```
-
-## Project Structure
-
-```
-LessonTrack/                  
-├── ai_summary.py              # Loads data from google sheets and generates AI summaries using ChatGPT
-├── Email.py                   # Handles all email sending functionalities 
-├── Monday.py                  # Script to run on Mondays: sends form submission reminders to tutors
-├── Sunday.py                  # Script to run on Sundays: processes forms, generates reports, sends emails
-├── test_sunday_no_email.py    # For testing Sunday's logic without sending actual emails
-├── test_email.py              # Basic script to test Gmail API email sending
-├── requirements.txt           # Python dependencies
-├── .env                       # Environment variables (create from env.example)
-├── env.example                # Example environment configuration
-├── SETUP.md                   # Detailed setup instructions
-├── README.md                  
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --require-hashes -r requirements.txt -r requirements-dev.txt
 ```
 
-## Configuration
+Set the values listed in [`env.example`](env.example) in your shell. A `.env` file is only a template until you load it; for example, use `set -a; source .env; set +a` in a trusted local shell. Keep the file out of Git. For Sheets authentication, set `SHEETS_CREDENTIALS_JSON` to the service account JSON content or set `SHEETS_CREDENTIALS_FILE` to a local JSON path. The default local path is `sheets_credentials.json` in the repository root. SMTP uses `GMAIL_APP_PASSWORD`; a local `gmail_token.json` can provide Gmail OAuth fallback. GitHub Actions reads the same values from repository secrets. See [operations](docs/OPERATIONS.md) for the required secret names.
 
-All sensitive information is now managed through environment variables. You'll need to:
+## Preview and apply
 
-1. **Set up environment variables** (see `env.example`)
-2. **Configure Google Cloud credentials** (see [SETUP.md](SETUP.md))
-3. **Create and configure Google Sheets** (see [SETUP.md](SETUP.md))
-4. **Set up OpenAI API access** (see [SETUP.md](SETUP.md))
+```bash
+python Sunday.py
+python Monday.py
+python -m lessontrack.cli remind --campaign friday
+python Sunday.py --week 2026-10-12 --include-archives
+```
 
-## Running the System
+A preview reads Sheets and writes local diagnostics. It does not send mail, write Sheets, or call OpenAI. Sunday defaults to the most recently completed week; reminders default to the current week. A week runs Monday through Sunday. The class date determines the report week, and the latest submission for a tutor and week takes precedence. Invalid answers and ambiguous submissions cause a nonzero exit and record source row references.
 
-*   **To Send Monday Form Submission Reminders:**
-    ```bash
-    python Monday.py
-    ```
-    *(This will send emails to all tutors listed in the Tutor Info Sheet)*
+For an offline review, pass `--roster-csv path/to/roster.csv --responses-csv path/to/responses.csv`. CSV previews cannot apply. Store exports outside Git. Use `--output path/to/private-preview.txt` for a private text preview outside the diagnostics directory.
 
-*   **To Run Sunday Weekly Reporting and Emailing:**
-    ```bash
-    python Sunday.py
-    ```
-    *(This loads data, processes responses, updates the Tutor Info Sheet, generates AI summaries, and emails reports to representatives and management.)*
+To write journal and roster updates and send mail, add `--apply` to `Sunday.py` or `Monday.py`. Review the preview and the opening balance procedure in [operations](docs/OPERATIONS.md) before the first report apply. Apply operations preserve original response rows and only update the roster columns owned by LessonTrack. Delivery states are recorded so a rerun does not blindly resend accepted or uncertain mail.
 
-*   **To Test Sunday Logic Without Sending Emails:**
-    ```bash
-    python test_sunday_no_email.py
-    ```
-    *(This performs all data processing and AI summary generation, then prints the would-be email contents to the console.)*
+The GitHub Actions jobs run only when manually dispatched. Dispatches default to preview; `apply` must be selected explicitly. CI runs the synthetic test suite and lint on pushes and pull requests.
 
-*   **To Test Basic Email Functionality:**
-    ```bash
-    python test_email.py
-    ```
+## Tests and diagnostics
 
-## Key Scripts Overview
+```bash
+python -m unittest discover -s tests -v
+ruff check .
+```
 
-*   **`ai_summary.py`:**
-    *   Handles loading tutor and representative data from Google Sheets.
-    *   Fetches and processes new form responses.
-    *   Manages cumulative data updates and prevents double-counting.
-    *   Contains the `Tutor` and `Representative` classes.
-    *   Interfaces with OpenAI API to generate summaries and conduct safety checks.
-    *   Updates the Tutor Information Google Sheet.
-*   **`Email.py`:**
-    *   Manages Gmail API authentication and email sending.
-    *   Contains functions to send various types of emails (reminders, representative reports, management reports).
-    *   Orchestrates the data flow for generating weekly reports.
-*   **`Monday.py`:** Simple script to trigger reminder emails via `Email.py`.
-*   **`Sunday.py`:** Simple script to trigger the full weekly reporting process via `Email.py`.
+Tests use synthetic records and mock external services. Each command stores `events.jsonl` and `summary.json` under `.lessontrack/runs/<run-id>/`. Diagnostic records contain stage timings, source row references, error codes, and provider status/request IDs, while excluding contact details and report narratives. `test_email.py --send --recipient address@example.com` is an explicit delivery check. `student_pairing_email.py` accepts a private JSON file of pairings and requires `--send` to deliver.
 
-## Data Flow (Sunday Process)
+## Code layout
 
-1.  `Sunday.py` calls `send_weekly_reports` in `Email.py`.
-2.  `Email.py` calls functions in `ai_summary.py`:
-    *   `load_tutors()`: Loads current tutor data from Google Sheet.
-    *   `attach_lesson_reports_to_tutors()`: Fetches new form responses and updates tutor objects (weekly hours, cumulative totals, `last_processed_timestamp`).
-    *   `save_tutors_to_google_sheet()`: Writes the updated tutor data (including new cumulative totals and timestamps) back to the Tutor Info Google Sheet.
-    *   `generate_school_summaries()`: Iterates through tutors, calls `tutor.summarize_responses()` (which calls OpenAI API), and groups summaries by school.
-    *   `load_representatives()`: Loads representative data.
-3.  `Email.py` then formats and sends emails to representatives and management using the generated summaries and statistics.
+| Module | Purpose |
+| --- | --- |
+| `lessontrack/settings.py` | Environment-based configuration |
+| `lessontrack/reports.py` | Validation and weekly report selection |
+| `lessontrack/storage.py` | Sheets access, event journal, and scoped roster writes |
+| `lessontrack/ai.py` | Bounded summary generation and caching |
+| `lessontrack/mail.py` | SMTP and Gmail delivery with outcome tracking |
+| `lessontrack/jobs.py` | Report and reminder coordination |
+| `lessontrack/diagnostics.py` | Safe run traces and error codes |
+| `lessontrack/cli.py` | Preview and apply entrypoint |
 
-## Security and Privacy
-
-This repository is designed to be open source safe:
-
-- **No hardcoded credentials** - All sensitive data uses environment variables
-- **Credential files excluded** - `.gitignore` prevents accidental commits of sensitive files
-- **Configurable URLs** - All Google Sheets and form URLs are configurable
-- **Privacy-focused** - AI summaries exclude personal information
-
-## Important Considerations
-
-*   **API Keys & Credentials:** Keep your `.env` file, `gmail_credentials.json`, `gmail_token.json`, and `sheets_credentials.json` secure. Never commit these files to version control.
-*   **Google Sheet Permissions:** Ensure the service account email has "Editor" access to all relevant Google Sheets.
-*   **Google Form Structure:** The form response sheet needs a reliable "Tutor Name" column that matches names in the Tutor Info Sheet, and a "Timestamp" column.
-*   **Cost Monitoring:** Be mindful of OpenAI API usage costs, especially with a large number of tutors or very long reports.
-
-## License
-
-This project is open source. Please check the LICENSE file for details.
-
-## Support
-
-For setup help, see [SETUP.md](SETUP.md). 
+`Monday.py`, `Sunday.py`, `Email.py`, and `ai_summary.py` provide compatibility entrypoints.
