@@ -1,0 +1,69 @@
+name: LessonTrack Monday
+
+# Manual preview or explicitly requested delivery.
+"on":
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Persist results and send emails (false runs a read-only preview)
+        type: boolean
+        default: false
+      week:
+        description: Optional date within the reporting week (YYYY-MM-DD)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lessontrack-production
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install locked dependencies
+        run: python -m pip install --require-hashes -r requirements.txt -r requirements-dev.txt
+      - name: Verify before running
+        run: |
+          python -m unittest discover -s tests -v
+          ruff check .
+      - name: Run with retained diagnostics
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SHEETS_CREDENTIALS_JSON: ${{ secrets.SHEETS_CREDENTIALS_JSON }}
+          TUTOR_INFO_CSV_URL: ${{ secrets.TUTOR_INFO_CSV_URL }}
+          RESPONSE_CSV_URL: ${{ secrets.RESPONSE_CSV_URL }}
+          REPRESENTATIVE_CSV_URL: ${{ secrets.REPRESENTATIVE_CSV_URL }}
+          FORM_URL: ${{ secrets.FORM_URL }}
+          DRIVE_FOLDER_URL: ${{ secrets.DRIVE_FOLDER_URL }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          MANAGEMENT_EMAILS: ${{ secrets.MANAGEMENT_EMAILS }}
+          APPLY: ${{ inputs.apply }}
+          REPORT_WEEK: ${{ inputs.week }}
+        shell: bash
+        run: |
+          args=("remind" "--campaign" "monday")
+          if [[ -n "$REPORT_WEEK" ]]; then args+=("--week" "$REPORT_WEEK"); fi
+          if [[ "$APPLY" == "true" ]]; then args+=("--apply"); fi
+          python -m lessontrack.cli "${args[@]}"
+      - name: Retain diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lessontrack-monday-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .lessontrack/runs/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 90

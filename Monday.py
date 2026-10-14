@@ -1,11 +1,8 @@
-from Email import Monday_email_to_tutors
+"""Preview by default. Pass --apply to persist and send."""
 
-def Monday():
-    print("Starting Monday email process...")
-    Monday_email_to_tutors()
-    print("Finished Monday email process.")
+from lessontrack.cli import main
 
-print("Running Monday script...")
-Monday()
-print("Monday script completed.")  
+if __name__ == "__main__":
+    import sys
 
+    raise SystemExit(main(["remind", *sys.argv[1:]]))

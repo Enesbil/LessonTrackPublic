@@ -1,0 +1,21 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+config_local.py
+*.json
+*.jsonl
+.lessontrack/
+*.csv
+*.xlsx
+
+# Build and editor files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ruff_cache/
+.pytest_cache/
+.vscode/
+.idea/
+.DS_Store
